@@ -114,3 +114,41 @@ ORDER BY a.created_at
 LIMIT :limit
 OFFSET
 :offset;
+
+
+-- name: get-tags-for-articles
+SELECT att.article_id, t.tag
+FROM tags t
+         INNER JOIN articles_to_tags att ON t.tag = att.tag
+WHERE att.article_id = ANY(:article_ids::int[])
+ORDER BY att.article_id;
+
+
+-- name: get-favorites-counts-for-articles
+SELECT article_id, count(*) AS favorites_count
+FROM favorites
+WHERE article_id = ANY(:article_ids::int[])
+GROUP BY article_id;
+
+
+-- name: get-favorited-article-ids-for-user
+SELECT article_id
+FROM favorites
+WHERE user_id = (SELECT id FROM users WHERE username = :username)
+  AND article_id = ANY(:article_ids::int[]);
+
+
+-- name: get-following-status-for-user-to-usernames
+SELECT u.username,
+       CASE WHEN f.following_id IS NULL THEN FALSE ELSE TRUE END AS is_following
+FROM users u
+         LEFT OUTER JOIN followers_to_followings f
+             ON u.id = f.following_id
+             AND f.follower_id = (SELECT id FROM users WHERE username = :follower_username)
+WHERE u.username = ANY(:usernames::text[]);
+
+
+-- name: get-users-by-usernames
+SELECT id, username, bio, image
+FROM users
+WHERE username = ANY(:usernames::text[]);
