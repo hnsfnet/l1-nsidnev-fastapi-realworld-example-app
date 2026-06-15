@@ -1,6 +1,6 @@
 from typing import Optional
 
-from fastapi import APIRouter, Body, Depends, Response
+from fastapi import APIRouter, Body, Depends, Query, Response
 from starlette import status
 
 from app.api.dependencies.articles import get_article_by_slug_from_path
@@ -17,6 +17,7 @@ from app.models.domain.users import User
 from app.models.schemas.comments import (
     CommentInCreate,
     CommentInResponse,
+    CommentSortOrder,
     ListOfCommentsInResponse,
 )
 
@@ -32,9 +33,18 @@ async def list_comments_for_article(
     article: Article = Depends(get_article_by_slug_from_path),
     user: Optional[User] = Depends(get_current_user_authorizer(required=False)),
     comments_repo: CommentsRepository = Depends(get_repository(CommentsRepository)),
+    limit: int = Query(20, ge=1, le=100),
+    offset: int = Query(0, ge=0),
+    sort: CommentSortOrder = Query(CommentSortOrder.desc),
 ) -> ListOfCommentsInResponse:
-    comments = await comments_repo.get_comments_for_article(article=article, user=user)
-    return ListOfCommentsInResponse(comments=comments)
+    comments, comments_count = await comments_repo.get_comments_for_article(
+        article=article,
+        user=user,
+        limit=limit,
+        offset=offset,
+        sort=sort.value,
+    )
+    return ListOfCommentsInResponse(comments=comments, comments_count=comments_count)
 
 
 @router.post(

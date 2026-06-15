@@ -1,4 +1,4 @@
-from typing import List, Optional
+from typing import List, Optional, Tuple
 
 from asyncpg import Connection, Record
 
@@ -44,12 +44,32 @@ class CommentsRepository(BaseRepository):
         *,
         article: Article,
         user: Optional[User] = None,
-    ) -> List[Comment]:
-        comments_rows = await queries.get_comments_for_article_by_slug(
+        limit: int = 20,
+        offset: int = 0,
+        sort: str = "desc",
+    ) -> Tuple[List[Comment], int]:
+        if sort == "asc":
+            comments_rows = await queries.get_comments_for_article_by_slug_asc(
+                self.connection,
+                slug=article.slug,
+                limit=limit,
+                offset=offset,
+            )
+        else:
+            comments_rows = await queries.get_comments_for_article_by_slug_desc(
+                self.connection,
+                slug=article.slug,
+                limit=limit,
+                offset=offset,
+            )
+
+        count_row = await queries.get_comments_count_for_article(
             self.connection,
             slug=article.slug,
         )
-        return [
+        comments_count = count_row["comments_count"]
+
+        comments = [
             await self._get_comment_from_db_record(
                 comment_row=comment_row,
                 author_username=comment_row["author_username"],
@@ -57,6 +77,7 @@ class CommentsRepository(BaseRepository):
             )
             for comment_row in comments_rows
         ]
+        return comments, comments_count
 
     async def create_comment_for_article(
         self,

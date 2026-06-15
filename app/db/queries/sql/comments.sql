@@ -7,6 +7,35 @@ SELECT c.id,
 FROM commentaries c
          INNER JOIN articles a ON c.article_id = a.id AND (a.slug = :slug);
 
+-- name: get-comments-for-article-by-slug-asc
+SELECT c.id,
+       c.body,
+       c.created_at,
+       c.updated_at,
+       (SELECT username FROM users WHERE id = c.author_id) as author_username
+FROM commentaries c
+         INNER JOIN articles a ON c.article_id = a.id AND (a.slug = :slug)
+ORDER BY c.created_at ASC
+LIMIT :limit
+OFFSET :offset;
+
+-- name: get-comments-for-article-by-slug-desc
+SELECT c.id,
+       c.body,
+       c.created_at,
+       c.updated_at,
+       (SELECT username FROM users WHERE id = c.author_id) as author_username
+FROM commentaries c
+         INNER JOIN articles a ON c.article_id = a.id AND (a.slug = :slug)
+ORDER BY c.created_at DESC
+LIMIT :limit
+OFFSET :offset;
+
+-- name: get-comments-count-for-article^
+SELECT count(*) AS comments_count
+FROM commentaries c
+         INNER JOIN articles a ON c.article_id = a.id AND (a.slug = :slug);
+
 -- name: get-comment-by-id-and-slug^
 SELECT c.id,
        c.body,
