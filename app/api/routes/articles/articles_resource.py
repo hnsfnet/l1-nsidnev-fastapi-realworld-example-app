@@ -41,12 +41,17 @@ async def list_articles(
         offset=articles_filters.offset,
         requested_user=user,
     )
+    articles_count = await articles_repo.count_articles(
+        tag=articles_filters.tag,
+        author=articles_filters.author,
+        favorited=articles_filters.favorited,
+    )
     articles_for_response = [
         ArticleForResponse.from_orm(article) for article in articles
     ]
     return ListOfArticlesInResponse(
         articles=articles_for_response,
-        articles_count=len(articles),
+        articles_count=articles_count,
     )
 
 
