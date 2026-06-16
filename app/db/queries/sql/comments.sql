@@ -15,7 +15,7 @@ SELECT c.id,
        (SELECT username FROM users WHERE id = c.author_id) as author_username
 FROM commentaries c
          INNER JOIN articles a ON c.article_id = a.id AND (a.slug = :slug)
-ORDER BY c.created_at ASC
+ORDER BY c.created_at ASC, c.id ASC
 LIMIT :limit
 OFFSET :offset;
 
@@ -27,7 +27,7 @@ SELECT c.id,
        (SELECT username FROM users WHERE id = c.author_id) as author_username
 FROM commentaries c
          INNER JOIN articles a ON c.article_id = a.id AND (a.slug = :slug)
-ORDER BY c.created_at DESC
+ORDER BY c.created_at DESC, c.id DESC
 LIMIT :limit
 OFFSET :offset;
 
@@ -59,6 +59,19 @@ RETURNING
     id,
     body,
         (SELECT username FROM users_subquery) AS author_username,
+    created_at,
+    updated_at;
+
+-- name: update-comment<!
+UPDATE commentaries
+SET body = :body,
+    updated_at = NOW()
+WHERE id = :comment_id
+  AND author_id = (SELECT id FROM users WHERE username = :author_username)
+RETURNING
+    id,
+    body,
+    (SELECT username FROM users WHERE id = commentaries.author_id) AS author_username,
     created_at,
     updated_at;
 

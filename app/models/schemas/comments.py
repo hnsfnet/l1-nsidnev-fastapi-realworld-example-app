@@ -1,7 +1,7 @@
 from enum import Enum
 from typing import List
 
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, validator
 
 from app.models.domain.comments import Comment
 from app.models.schemas.rwschema import RWSchema
@@ -32,3 +32,19 @@ class CommentInResponse(RWSchema):
 
 class CommentInCreate(RWSchema):
     body: str
+
+    @validator("body")
+    def body_must_not_be_blank(cls, v: str) -> str:
+        if not v.strip():
+            raise ValueError("comment body cannot be blank")
+        return v
+
+
+class CommentInUpdate(RWSchema):
+    body: str
+
+    @validator("body")
+    def body_must_not_be_blank(cls, v: str) -> str:
+        if not v.strip():
+            raise ValueError("comment body cannot be blank")
+        return v

@@ -58,6 +58,9 @@ class CommentsQueriesMixin:
     async def create_new_comment(
         self, conn: Connection, *, body: str, article_slug: str, author_username: str
     ) -> Record: ...
+    async def update_comment(
+        self, conn: Connection, *, body: str, comment_id: int, author_username: str
+    ) -> Record: ...
     async def delete_comment_by_id(
         self, conn: Connection, *, comment_id: int, author_username: str
     ) -> None: ...
