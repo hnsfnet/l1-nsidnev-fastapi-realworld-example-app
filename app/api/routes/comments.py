@@ -57,6 +57,24 @@ async def create_comment_for_article(
     return CommentInResponse(comment=comment)
 
 
+@router.put(
+    "/{comment_id}",
+    response_model=CommentInResponse,
+    name="comments:update-comment-for-article",
+    dependencies=[Depends(check_comment_modification_permissions)],
+)
+async def update_comment_for_article(
+    comment_update: CommentInUpdate = Body(..., embed=True, alias="comment"),
+    comment: Comment = Depends(get_comment_by_id_from_path),
+    comments_repo: CommentsRepository = Depends(get_repository(CommentsRepository)),
+) -> CommentInResponse:
+    comment = await comments_repo.update_comment(
+        comment=comment,
+        body=comment_update.body or comment.body,
+    )
+    return CommentInResponse(comment=comment)
+
+
 @router.delete(
     "/{comment_id}",
     status_code=status.HTTP_204_NO_CONTENT,

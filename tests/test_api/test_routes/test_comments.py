@@ -94,3 +94,88 @@ async def test_user_will_receive_error_for_not_existing_comment(
     )
 
     assert not_found_response.status_code == status.HTTP_404_NOT_FOUND
+
+
+async def test_user_can_update_own_comment(
+    app: FastAPI, authorized_client: AsyncClient, test_article: Article
+) -> None:
+    created_comment_response = await authorized_client.post(
+        app.url_path_for("comments:create-comment-for-article", slug=test_article.slug),
+        json={"comment": {"body": "original comment"}},
+    )
+
+    created_comment = CommentInResponse(**created_comment_response.json())
+
+    update_response = await authorized_client.put(
+        app.url_path_for(
+            "comments:update-comment-for-article",
+            slug=test_article.slug,
+            comment_id=str(created_comment.comment.id_),
+        ),
+        json={"comment": {"body": "updated comment"}},
+    )
+
+    assert update_response.status_code == status.HTTP_200_OK
+
+    updated_comment = CommentInResponse(**update_response.json())
+    assert updated_comment.comment.body == "updated comment"
+    assert updated_comment.comment.id_ == created_comment.comment.id_
+    assert updated_comment.comment.created_at == created_comment.comment.created_at
+
+
+async def test_user_can_not_update_not_authored_comment(
+    app: FastAPI, authorized_client: AsyncClient, test_article: Article, pool: Pool
+) -> None:
+    async with pool.acquire() as connection:
+        users_repo = UsersRepository(connection)
+        user = await users_repo.create_user(
+            username="test_author", email="author@email.com", password="password"
+        )
+        comments_repo = CommentsRepository(connection)
+        comment = await comments_repo.create_comment_for_article(
+            body="tmp", article=test_article, user=user
+        )
+
+    forbidden_response = await authorized_client.put(
+        app.url_path_for(
+            "comments:update-comment-for-article",
+            slug=test_article.slug,
+            comment_id=str(comment.id_),
+        ),
+        json={"comment": {"body": "hacked"}},
+    )
+
+    assert forbidden_response.status_code == status.HTTP_403_FORBIDDEN
+
+
+async def test_user_can_not_update_comment_with_blank_body(
+    app: FastAPI, authorized_client: AsyncClient, test_article: Article
+) -> None:
+    created_comment_response = await authorized_client.post(
+        app.url_path_for("comments:create-comment-for-article", slug=test_article.slug),
+        json={"comment": {"body": "original comment"}},
+    )
+
+    created_comment = CommentInResponse(**created_comment_response.json())
+
+    response = await authorized_client.put(
+        app.url_path_for(
+            "comments:update-comment-for-article",
+            slug=test_article.slug,
+            comment_id=str(created_comment.comment.id_),
+        ),
+        json={"comment": {"body": "   \n  "}},
+    )
+
+    assert response.status_code == status.HTTP_422_UNPROCESSABLE_ENTITY
+
+
+async def test_user_can_not_create_comment_with_blank_body(
+    app: FastAPI, authorized_client: AsyncClient, test_article: Article
+) -> None:
+    response = await authorized_client.post(
+        app.url_path_for("comments:create-comment-for-article", slug=test_article.slug),
+        json={"comment": {"body": "   \n  "}},
+    )
+
+    assert response.status_code == status.HTTP_422_UNPROCESSABLE_ENTITY
