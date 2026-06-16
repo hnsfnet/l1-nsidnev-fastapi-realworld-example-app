@@ -28,6 +28,7 @@ class ArticleInUpdate(RWSchema):
     title: Optional[str] = None
     description: Optional[str] = None
     body: Optional[str] = None
+    tags: Optional[List[str]] = Field(None, alias="tagList")
 
 
 class ListOfArticlesInResponse(RWSchema):

@@ -18,6 +18,7 @@ from app.db.repositories.profiles import ProfilesRepository
 from app.db.repositories.tags import TagsRepository
 from app.models.domain.articles import Article
 from app.models.domain.users import User
+from app.services.tags import clean_tags
 
 AUTHOR_USERNAME_ALIAS = "author_username"
 SLUG_ALIAS = "slug"
@@ -41,6 +42,8 @@ class ArticlesRepository(BaseRepository):  # noqa: WPS214
         author: User,
         tags: Optional[Sequence[str]] = None,
     ) -> Article:
+        tags = clean_tags(tags) if tags else []
+
         async with self.connection.transaction():
             article_row = await queries.create_new_article(
                 self.connection,
@@ -70,6 +73,7 @@ class ArticlesRepository(BaseRepository):  # noqa: WPS214
         title: Optional[str] = None,
         body: Optional[str] = None,
         description: Optional[str] = None,
+        tags: Optional[Sequence[str]] = None,
     ) -> Article:
         updated_article = article.copy(deep=True)
         updated_article.slug = slug or updated_article.slug
@@ -87,6 +91,17 @@ class ArticlesRepository(BaseRepository):  # noqa: WPS214
                 new_body=updated_article.body,
                 new_description=updated_article.description,
             )
+
+            if tags is not None:
+                cleaned_tags = clean_tags(tags)
+                await self._unlink_article_from_tags(slug=updated_article.slug)
+                if cleaned_tags:
+                    await self._tags_repo.create_tags_that_dont_exist(tags=cleaned_tags)
+                    await self._link_article_with_tags(
+                        slug=updated_article.slug,
+                        tags=cleaned_tags,
+                    )
+                updated_article.tags = cleaned_tags
 
         return updated_article
 
@@ -328,3 +343,6 @@ class ArticlesRepository(BaseRepository):  # noqa: WPS214
             self.connection,
             [{SLUG_ALIAS: slug, "tag": tag} for tag in tags],
         )
+
+    async def _unlink_article_from_tags(self, *, slug: str) -> None:
+        await queries.remove_all_tags_from_article(self.connection, slug=slug)
