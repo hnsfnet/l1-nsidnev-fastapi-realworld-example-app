@@ -70,6 +70,7 @@ class ArticlesRepository(BaseRepository):  # noqa: WPS214
         title: Optional[str] = None,
         body: Optional[str] = None,
         description: Optional[str] = None,
+        tags: Optional[List[str]] = None,
     ) -> Article:
         updated_article = article.copy(deep=True)
         updated_article.slug = slug or updated_article.slug
@@ -87,6 +88,19 @@ class ArticlesRepository(BaseRepository):  # noqa: WPS214
                 new_body=updated_article.body,
                 new_description=updated_article.description,
             )
+
+            if tags is not None:
+                await queries.remove_tags_from_article(
+                    self.connection,
+                    slug=updated_article.slug,
+                )
+                if tags:
+                    await self._tags_repo.create_tags_that_dont_exist(tags=tags)
+                    await self._link_article_with_tags(
+                        slug=updated_article.slug,
+                        tags=tags,
+                    )
+                updated_article.tags = list(tags)
 
         return updated_article
 

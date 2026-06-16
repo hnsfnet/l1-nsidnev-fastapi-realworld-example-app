@@ -1,9 +1,25 @@
+from typing import List, Set
+
 from slugify import slugify
 
 from app.db.errors import EntityDoesNotExist
 from app.db.repositories.articles import ArticlesRepository
 from app.models.domain.articles import Article
 from app.models.domain.users import User
+
+
+def clean_tags(tags: List[str]) -> List[str]:
+    seen: Set[str] = set()
+    cleaned: List[str] = []
+    for tag in tags:
+        stripped = tag.strip()
+        if not stripped:
+            continue
+        key = stripped.lower()
+        if key not in seen:
+            seen.add(key)
+            cleaned.append(stripped)
+    return cleaned
 
 
 async def check_article_exists(articles_repo: ArticlesRepository, slug: str) -> bool:

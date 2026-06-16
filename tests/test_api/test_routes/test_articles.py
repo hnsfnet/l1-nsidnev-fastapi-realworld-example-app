@@ -573,3 +573,96 @@ async def test_filtering_with_limit_and_offset(
 
     articles_from_response = ListOfArticlesInResponse(**response.json())
     assert full_articles.articles[3:] == articles_from_response.articles
+
+
+async def test_user_can_replace_article_tags(
+    app: FastAPI, authorized_client: AsyncClient, test_article: Article
+) -> None:
+    response = await authorized_client.put(
+        app.url_path_for("articles:update-article", slug=test_article.slug),
+        json={"article": {"tagList": ["new-tag1", "new-tag2"]}},
+    )
+    assert response.status_code == status.HTTP_200_OK
+    article = ArticleInResponse(**response.json())
+    assert set(article.article.tags) == {"new-tag1", "new-tag2"}
+
+
+async def test_user_can_clear_article_tags(
+    app: FastAPI, authorized_client: AsyncClient, test_article: Article
+) -> None:
+    response = await authorized_client.put(
+        app.url_path_for("articles:update-article", slug=test_article.slug),
+        json={"article": {"tagList": []}},
+    )
+    assert response.status_code == status.HTTP_200_OK
+    article = ArticleInResponse(**response.json())
+    assert article.article.tags == []
+
+
+async def test_tags_not_changed_when_not_provided_in_update(
+    app: FastAPI, authorized_client: AsyncClient, test_article: Article
+) -> None:
+    response = await authorized_client.put(
+        app.url_path_for("articles:update-article", slug=test_article.slug),
+        json={"article": {"title": "New Title"}},
+    )
+    assert response.status_code == status.HTTP_200_OK
+    article = ArticleInResponse(**response.json())
+    assert set(article.article.tags) == {"tests", "testing", "pytest"}
+
+
+async def test_tags_are_cleaned_on_update(
+    app: FastAPI, authorized_client: AsyncClient, test_article: Article
+) -> None:
+    response = await authorized_client.put(
+        app.url_path_for("articles:update-article", slug=test_article.slug),
+        json={"article": {"tagList": ["  clean-me  ", "", "  ", "valid"]}},
+    )
+    assert response.status_code == status.HTTP_200_OK
+    article = ArticleInResponse(**response.json())
+    assert set(article.article.tags) == {"clean-me", "valid"}
+
+
+async def test_tags_are_deduplicated_case_insensitively_on_update(
+    app: FastAPI, authorized_client: AsyncClient, test_article: Article
+) -> None:
+    response = await authorized_client.put(
+        app.url_path_for("articles:update-article", slug=test_article.slug),
+        json={"article": {"tagList": ["Python", "python", "PYTHON", "java"]}},
+    )
+    assert response.status_code == status.HTTP_200_OK
+    article = ArticleInResponse(**response.json())
+    assert len(article.article.tags) == 2
+    assert "Python" in article.article.tags
+    assert "java" in article.article.tags
+
+
+async def test_tags_are_cleaned_on_create(
+    app: FastAPI, authorized_client: AsyncClient, test_user: UserInDB
+) -> None:
+    article_data = {
+        "title": "Clean Tags Test",
+        "body": "body",
+        "description": "desc",
+        "tagList": ["  spaced  ", "", "Dup", "dup", "  "],
+    }
+    response = await authorized_client.post(
+        app.url_path_for("articles:create-article"),
+        json={"article": article_data},
+    )
+    article = ArticleInResponse(**response.json())
+    assert set(article.article.tags) == {"spaced", "Dup"}
+
+
+async def test_updated_tags_persist_after_refetch(
+    app: FastAPI, authorized_client: AsyncClient, test_article: Article
+) -> None:
+    await authorized_client.put(
+        app.url_path_for("articles:update-article", slug=test_article.slug),
+        json={"article": {"tagList": ["persisted"]}},
+    )
+    response = await authorized_client.get(
+        app.url_path_for("articles:get-article", slug=test_article.slug),
+    )
+    article = ArticleInResponse(**response.json())
+    assert article.article.tags == ["persisted"]
