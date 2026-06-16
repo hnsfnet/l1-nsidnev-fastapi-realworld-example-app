@@ -1,4 +1,4 @@
-from typing import Optional
+from typing import Any, Dict
 
 from app.db.errors import EntityDoesNotExist
 from app.db.queries.queries import queries
@@ -26,6 +26,18 @@ class UsersRepository(BaseRepository):
             "user with username {0} does not exist".format(username),
         )
 
+    async def check_username_exists_ci(self, *, username: str) -> bool:
+        result = await queries.check_username_exists_ci(
+            self.connection, username=username
+        )
+        return result is not None
+
+    async def check_email_exists_ci(self, *, email: str) -> bool:
+        result = await queries.check_email_exists_ci(
+            self.connection, email=email
+        )
+        return result is not None
+
     async def create_user(
         self,
         *,
@@ -51,20 +63,23 @@ class UsersRepository(BaseRepository):
         self,
         *,
         user: User,
-        username: Optional[str] = None,
-        email: Optional[str] = None,
-        password: Optional[str] = None,
-        bio: Optional[str] = None,
-        image: Optional[str] = None,
+        update_data: Dict[str, Any],
     ) -> UserInDB:
         user_in_db = await self.get_user_by_username(username=user.username)
 
-        user_in_db.username = username or user_in_db.username
-        user_in_db.email = email or user_in_db.email
-        user_in_db.bio = bio or user_in_db.bio
-        user_in_db.image = image or user_in_db.image
-        if password:
-            user_in_db.change_password(password)
+        # Apply only explicitly provided fields (exclude_unset already done by caller)
+        if "username" in update_data and update_data["username"]:
+            user_in_db.username = update_data["username"]
+        if "email" in update_data and update_data["email"]:
+            user_in_db.email = update_data["email"]
+        if "bio" in update_data:
+            # Allow clearing bio to empty string
+            user_in_db.bio = update_data["bio"] if update_data["bio"] is not None else ""
+        if "image" in update_data:
+            # Allow clearing image to None/empty
+            user_in_db.image = update_data["image"] or ""
+        if "password" in update_data and update_data["password"]:
+            user_in_db.change_password(update_data["password"])
 
         async with self.connection.transaction():
             user_in_db.updated_at = await queries.update_user_by_username(

@@ -47,3 +47,17 @@ SET username        = :new_username,
 WHERE username = :username
 RETURNING
     updated_at;
+
+
+-- name: check-username-exists-ci^
+SELECT 1 AS exists
+FROM users
+WHERE LOWER(username) = LOWER(:username)
+LIMIT 1;
+
+
+-- name: check-email-exists-ci^
+SELECT 1 AS exists
+FROM users
+WHERE LOWER(email) = LOWER(:email)
+LIMIT 1;

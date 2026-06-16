@@ -42,21 +42,36 @@ async def update_current_user(
     users_repo: UsersRepository = Depends(get_repository(UsersRepository)),
     settings: AppSettings = Depends(get_app_settings),
 ) -> UserInResponse:
-    if user_update.username and user_update.username != current_user.username:
+    # Reject empty password explicitly
+    update_fields = user_update.dict(exclude_unset=True)
+    if "password" in update_fields and not update_fields["password"]:
+        raise HTTPException(
+            status_code=HTTP_400_BAD_REQUEST,
+            detail=strings.EMPTY_PASSWORD,
+        )
+
+    # Case-insensitive check: only validate if the value actually differs
+    if (
+        user_update.username
+        and user_update.username.lower() != current_user.username.lower()
+    ):
         if await check_username_is_taken(users_repo, user_update.username):
             raise HTTPException(
                 status_code=HTTP_400_BAD_REQUEST,
                 detail=strings.USERNAME_TAKEN,
             )
 
-    if user_update.email and user_update.email != current_user.email:
+    if (
+        user_update.email
+        and user_update.email.lower() != current_user.email.lower()
+    ):
         if await check_email_is_taken(users_repo, user_update.email):
             raise HTTPException(
                 status_code=HTTP_400_BAD_REQUEST,
                 detail=strings.EMAIL_TAKEN,
             )
 
-    user = await users_repo.update_user(user=current_user, **user_update.dict())
+    user = await users_repo.update_user(user=current_user, update_data=update_fields)
 
     token = jwt.create_access_token_for_user(
         user,
