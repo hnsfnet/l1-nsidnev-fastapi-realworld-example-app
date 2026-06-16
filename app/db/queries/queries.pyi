@@ -106,6 +106,9 @@ class ArticlesQueriesMixin:
     async def delete_article(
         self, conn: Connection, *, slug: str, author_username: str
     ) -> None: ...
+    async def count_articles_for_feed(
+        self, conn: Connection, *, follower_username: str
+    ) -> Record: ...
     async def get_articles_for_feed(
         self, conn: Connection, *, follower_username: str, limit: int, offset: int
     ) -> Record: ...

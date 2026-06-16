@@ -93,6 +93,14 @@ WHERE slug = :slug
   AND author_id = (SELECT id FROM users WHERE username = :author_username);
 
 
+-- name: count-articles-for-feed^
+SELECT count(*) AS feed_count
+FROM articles a
+         INNER JOIN followers_to_followings f ON
+        f.following_id = a.author_id AND
+        f.follower_id = (SELECT id FROM users WHERE username = :follower_username);
+
+
 -- name: get-articles-for-feed
 SELECT a.id,
        a.slug,

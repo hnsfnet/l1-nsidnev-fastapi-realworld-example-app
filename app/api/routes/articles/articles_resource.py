@@ -33,7 +33,7 @@ async def list_articles(
     user: Optional[User] = Depends(get_current_user_authorizer(required=False)),
     articles_repo: ArticlesRepository = Depends(get_repository(ArticlesRepository)),
 ) -> ListOfArticlesInResponse:
-    articles = await articles_repo.filter_articles(
+    articles, articles_count = await articles_repo.filter_articles(
         tag=articles_filters.tag,
         author=articles_filters.author,
         favorited=articles_filters.favorited,
@@ -46,7 +46,7 @@ async def list_articles(
     ]
     return ListOfArticlesInResponse(
         articles=articles_for_response,
-        articles_count=len(articles),
+        articles_count=articles_count,
     )
 
 

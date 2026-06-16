@@ -1,4 +1,4 @@
-from typing import List
+from typing import List, Optional
 
 from app.models.domain.comments import Comment
 from app.models.schemas.rwschema import RWSchema
@@ -14,3 +14,7 @@ class CommentInResponse(RWSchema):
 
 class CommentInCreate(RWSchema):
     body: str
+
+
+class CommentInUpdate(RWSchema):
+    body: Optional[str] = None

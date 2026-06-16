@@ -30,7 +30,7 @@ async def get_articles_for_user_feed(
     user: User = Depends(get_current_user_authorizer()),
     articles_repo: ArticlesRepository = Depends(get_repository(ArticlesRepository)),
 ) -> ListOfArticlesInResponse:
-    articles = await articles_repo.get_articles_for_user_feed(
+    articles, articles_count = await articles_repo.get_articles_for_user_feed(
         user=user,
         limit=limit,
         offset=offset,
@@ -40,7 +40,7 @@ async def get_articles_for_user_feed(
     ]
     return ListOfArticlesInResponse(
         articles=articles_for_response,
-        articles_count=len(articles),
+        articles_count=articles_count,
     )
 
 

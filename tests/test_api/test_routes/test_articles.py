@@ -365,6 +365,7 @@ async def test_user_receiving_feed_with_limit_and_offset(
 
     articles_from_response = ListOfArticlesInResponse(**response.json())
     assert full_articles.articles[3:] == articles_from_response.articles
+    assert articles_from_response.articles_count == full_articles.articles_count
 
 
 async def test_article_will_contain_only_attached_tags(
@@ -573,3 +574,116 @@ async def test_filtering_with_limit_and_offset(
 
     articles_from_response = ListOfArticlesInResponse(**response.json())
     assert full_articles.articles[3:] == articles_from_response.articles
+    assert articles_from_response.articles_count == full_articles.articles_count
+
+
+async def test_filtering_by_tag_with_limit_and_offset(
+    app: FastAPI, authorized_client: AsyncClient, test_user: UserInDB, pool: Pool
+) -> None:
+    async with pool.acquire() as connection:
+        articles_repo = ArticlesRepository(connection)
+
+        for i in range(5):
+            await articles_repo.create_article(
+                slug=f"tagged-{i}",
+                title="tmp",
+                description="tmp",
+                body="tmp",
+                author=test_user,
+                tags=["target-tag"],
+            )
+        for i in range(3):
+            await articles_repo.create_article(
+                slug=f"other-{i}",
+                title="tmp",
+                description="tmp",
+                body="tmp",
+                author=test_user,
+                tags=["other-tag"],
+            )
+
+    response = await authorized_client.get(
+        app.url_path_for("articles:list-articles"),
+        params={"tag": "target-tag", "limit": 2, "offset": 0},
+    )
+    articles = ListOfArticlesInResponse(**response.json())
+    assert len(articles.articles) == 2
+    assert articles.articles_count == 5
+
+
+async def test_filtering_by_author_with_limit_and_offset(
+    app: FastAPI, authorized_client: AsyncClient, test_user: UserInDB, pool: Pool
+) -> None:
+    async with pool.acquire() as connection:
+        users_repo = UsersRepository(connection)
+        articles_repo = ArticlesRepository(connection)
+
+        target_author = await users_repo.create_user(
+            username="target-author",
+            email="target@email.com",
+            password="password",
+        )
+
+        for i in range(5):
+            await articles_repo.create_article(
+                slug=f"by-target-{i}",
+                title="tmp",
+                description="tmp",
+                body="tmp",
+                author=target_author,
+            )
+        for i in range(3):
+            await articles_repo.create_article(
+                slug=f"by-other-{i}",
+                title="tmp",
+                description="tmp",
+                body="tmp",
+                author=test_user,
+            )
+
+    response = await authorized_client.get(
+        app.url_path_for("articles:list-articles"),
+        params={"author": "target-author", "limit": 2, "offset": 0},
+    )
+    articles = ListOfArticlesInResponse(**response.json())
+    assert len(articles.articles) == 2
+    assert articles.articles_count == 5
+
+
+async def test_filtering_by_favorited_with_limit_and_offset(
+    app: FastAPI, authorized_client: AsyncClient, test_user: UserInDB, pool: Pool
+) -> None:
+    async with pool.acquire() as connection:
+        users_repo = UsersRepository(connection)
+        articles_repo = ArticlesRepository(connection)
+
+        fan = await users_repo.create_user(
+            username="super-fan", email="fan@email.com", password="password"
+        )
+
+        for i in range(5):
+            article = await articles_repo.create_article(
+                slug=f"fav-{i}",
+                title="tmp",
+                description="tmp",
+                body="tmp",
+                author=test_user,
+            )
+            await articles_repo.add_article_into_favorites(article=article, user=fan)
+
+        for i in range(3):
+            await articles_repo.create_article(
+                slug=f"not-fav-{i}",
+                title="tmp",
+                description="tmp",
+                body="tmp",
+                author=test_user,
+            )
+
+    response = await authorized_client.get(
+        app.url_path_for("articles:list-articles"),
+        params={"favorited": "super-fan", "limit": 2, "offset": 0},
+    )
+    articles = ListOfArticlesInResponse(**response.json())
+    assert len(articles.articles) == 2
+    assert articles.articles_count == 5

@@ -1,4 +1,4 @@
-from typing import List, Optional, Sequence, Union
+from typing import List, Optional, Sequence, Tuple, Union
 
 from asyncpg import Connection, Record
 from pypika import Query
@@ -107,7 +107,7 @@ class ArticlesRepository(BaseRepository):  # noqa: WPS214
         limit: int = 20,
         offset: int = 0,
         requested_user: Optional[User] = None,
-    ) -> List[Article]:
+    ) -> Tuple[List[Article], int]:
         query_params: List[Union[str, int]] = []
         query_params_count = 0
 
@@ -194,6 +194,14 @@ class ArticlesRepository(BaseRepository):  # noqa: WPS214
             )
             # fmt: on
 
+        count_query = "SELECT count(*) FROM ({0}) AS filtered_subquery".format(
+            query.get_sql(),
+        )
+        articles_count = await self.connection.fetchval(
+            count_query,
+            *query_params,
+        )
+
         query = query.limit(Parameter(query_params_count + 1)).offset(
             Parameter(query_params_count + 2),
         )
@@ -209,7 +217,7 @@ class ArticlesRepository(BaseRepository):  # noqa: WPS214
                 requested_user=requested_user,
             )
             for article_row in articles_rows
-        ]
+        ], articles_count
 
     async def get_articles_for_user_feed(
         self,
@@ -217,12 +225,16 @@ class ArticlesRepository(BaseRepository):  # noqa: WPS214
         user: User,
         limit: int = 20,
         offset: int = 0,
-    ) -> List[Article]:
+    ) -> Tuple[List[Article], int]:
         articles_rows = await queries.get_articles_for_feed(
             self.connection,
             follower_username=user.username,
             limit=limit,
             offset=offset,
+        )
+        count_row = await queries.count_articles_for_feed(
+            self.connection,
+            follower_username=user.username,
         )
         return [
             await self._get_article_from_db_record(
@@ -232,7 +244,7 @@ class ArticlesRepository(BaseRepository):  # noqa: WPS214
                 requested_user=user,
             )
             for article_row in articles_rows
-        ]
+        ], count_row["feed_count"]
 
     async def get_article_by_slug(
         self,

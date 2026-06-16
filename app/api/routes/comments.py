@@ -17,6 +17,7 @@ from app.models.domain.users import User
 from app.models.schemas.comments import (
     CommentInCreate,
     CommentInResponse,
+    CommentInUpdate,
     ListOfCommentsInResponse,
 )
 
