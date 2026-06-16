@@ -5,7 +5,8 @@ SELECT c.id,
        c.updated_at,
        (SELECT username FROM users WHERE id = c.author_id) as author_username
 FROM commentaries c
-         INNER JOIN articles a ON c.article_id = a.id AND (a.slug = :slug);
+         INNER JOIN articles a ON c.article_id = a.id AND (a.slug = :slug)
+ORDER BY c.created_at;
 
 -- name: get-comment-by-id-and-slug^
 SELECT c.id,
@@ -30,6 +31,18 @@ RETURNING
     id,
     body,
         (SELECT username FROM users_subquery) AS author_username,
+    created_at,
+    updated_at;
+
+-- name: update-comment-by-id-and-author<!
+UPDATE commentaries
+SET body = :body
+WHERE id = :comment_id
+  AND author_id = (SELECT id FROM users WHERE username = :author_username)
+RETURNING
+    id,
+    body,
+    (SELECT username FROM users WHERE id = commentaries.author_id) AS author_username,
     created_at,
     updated_at;
 

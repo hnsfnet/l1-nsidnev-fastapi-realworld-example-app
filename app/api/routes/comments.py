@@ -17,6 +17,7 @@ from app.models.domain.users import User
 from app.models.schemas.comments import (
     CommentInCreate,
     CommentInResponse,
+    CommentInUpdate,
     ListOfCommentsInResponse,
 )
 
@@ -53,6 +54,24 @@ async def create_comment_for_article(
         body=comment_create.body,
         article=article,
         user=user,
+    )
+    return CommentInResponse(comment=comment)
+
+
+@router.put(
+    "/{comment_id}",
+    response_model=CommentInResponse,
+    name="comments:update-comment",
+    dependencies=[Depends(check_comment_modification_permissions)],
+)
+async def update_comment(
+    comment_update: CommentInUpdate = Body(..., embed=True, alias="comment"),
+    current_comment: Comment = Depends(get_comment_by_id_from_path),
+    comments_repo: CommentsRepository = Depends(get_repository(CommentsRepository)),
+) -> CommentInResponse:
+    comment = await comments_repo.update_comment(
+        comment=current_comment,
+        body=comment_update.body,
     )
     return CommentInResponse(comment=comment)
 

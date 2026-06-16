@@ -77,6 +77,24 @@ class CommentsRepository(BaseRepository):
             requested_user=user,
         )
 
+    async def update_comment(
+        self,
+        *,
+        comment: Comment,
+        body: str,
+    ) -> Comment:
+        updated_comment_row = await queries.update_comment_by_id_and_author(
+            self.connection,
+            comment_id=comment.id_,
+            author_username=comment.author.username,
+            body=body,
+        )
+        return await self._get_comment_from_db_record(
+            comment_row=updated_comment_row,
+            author_username=updated_comment_row["author_username"],
+            requested_user=None,
+        )
+
     async def delete_comment(self, *, comment: Comment) -> None:
         await queries.delete_comment_by_id(
             self.connection,
