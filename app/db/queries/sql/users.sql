@@ -13,6 +13,21 @@ WHERE email = :email
 LIMIT 1;
 
 
+-- name: get-user-by-email-ci^
+SELECT id,
+       username,
+       email,
+       salt,
+       hashed_password,
+       bio,
+       image,
+       created_at,
+       updated_at
+FROM users
+WHERE LOWER(email) = LOWER(:email)
+LIMIT 1;
+
+
 -- name: get-user-by-username^
 SELECT id,
        username,
@@ -25,6 +40,21 @@ SELECT id,
        updated_at
 FROM users
 WHERE username = :username
+LIMIT 1;
+
+
+-- name: get-user-by-username-ci^
+SELECT id,
+       username,
+       email,
+       salt,
+       hashed_password,
+       bio,
+       image,
+       created_at,
+       updated_at
+FROM users
+WHERE LOWER(username) = LOWER(:username)
 LIMIT 1;
 
 

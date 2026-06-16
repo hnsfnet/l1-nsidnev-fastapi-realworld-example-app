@@ -8,6 +8,7 @@ USER_IS_NOT_AUTHOR_OF_ARTICLE = "you are not an author of this article"
 INCORRECT_LOGIN_INPUT = "incorrect email or password"
 USERNAME_TAKEN = "user with this username already exists"
 EMAIL_TAKEN = "user with this email already exists"
+INVALID_PASSWORD = "password cannot be empty"
 
 UNABLE_TO_FOLLOW_YOURSELF = "user can not follow him self"
 UNABLE_TO_UNSUBSCRIBE_FROM_YOURSELF = "user can not unsubscribe from him self"
