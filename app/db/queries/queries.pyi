@@ -92,6 +92,9 @@ class ArticlesQueriesMixin:
     async def add_tags_to_article(
         self, conn: Connection, tags_slugs: Sequence[Dict[str, str]]
     ) -> None: ...
+    async def remove_tags_from_article(
+        self, conn: Connection, *, slug: str
+    ) -> None: ...
     async def update_article(
         self,
         conn: Connection,

@@ -75,6 +75,11 @@ VALUES ((SELECT id FROM articles WHERE slug = :slug),
 ON CONFLICT DO NOTHING;
 
 
+-- name: remove-tags-from-article!
+DELETE FROM articles_to_tags
+WHERE article_id = (SELECT id FROM articles WHERE slug = :slug);
+
+
 -- name: update-article<!
 UPDATE articles
 SET slug        = :new_slug,

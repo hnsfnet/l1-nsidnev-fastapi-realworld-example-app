@@ -25,6 +25,10 @@ SLUG_ALIAS = "slug"
 CAMEL_OR_SNAKE_CASE_TO_WORDS = r"^[a-z\d_\-]+|[A-Z\d_\-][^A-Z\d_\-]*"
 
 
+def _clean_tags(tags: Sequence[str]) -> List[str]:
+    return list(dict.fromkeys(tag for raw in tags if (tag := raw.strip())))
+
+
 class ArticlesRepository(BaseRepository):  # noqa: WPS214
     def __init__(self, conn: Connection) -> None:
         super().__init__(conn)
@@ -51,6 +55,7 @@ class ArticlesRepository(BaseRepository):  # noqa: WPS214
                 author_username=author.username,
             )
 
+            tags = _clean_tags(tags) if tags else []
             if tags:
                 await self._tags_repo.create_tags_that_dont_exist(tags=tags)
                 await self._link_article_with_tags(slug=slug, tags=tags)
@@ -70,6 +75,7 @@ class ArticlesRepository(BaseRepository):  # noqa: WPS214
         title: Optional[str] = None,
         body: Optional[str] = None,
         description: Optional[str] = None,
+        tags: Optional[Sequence[str]] = None,
     ) -> Article:
         updated_article = article.copy(deep=True)
         updated_article.slug = slug or updated_article.slug
@@ -87,6 +93,21 @@ class ArticlesRepository(BaseRepository):  # noqa: WPS214
                 new_body=updated_article.body,
                 new_description=updated_article.description,
             )
+
+            if tags is not None:
+                cleaned_tags = _clean_tags(tags)
+                await self._unlink_all_tags_from_article(
+                    slug=updated_article.slug,
+                )
+                if cleaned_tags:
+                    await self._tags_repo.create_tags_that_dont_exist(
+                        tags=cleaned_tags,
+                    )
+                    await self._link_article_with_tags(
+                        slug=updated_article.slug,
+                        tags=cleaned_tags,
+                    )
+                updated_article.tags = cleaned_tags
 
         return updated_article
 
@@ -322,6 +343,9 @@ class ArticlesRepository(BaseRepository):  # noqa: WPS214
             created_at=article_row["created_at"],
             updated_at=article_row["updated_at"],
         )
+
+    async def _unlink_all_tags_from_article(self, *, slug: str) -> None:
+        await queries.remove_tags_from_article(self.connection, slug=slug)
 
     async def _link_article_with_tags(self, *, slug: str, tags: Sequence[str]) -> None:
         await queries.add_tags_to_article(
